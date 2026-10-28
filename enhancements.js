@@ -332,7 +332,7 @@
   window.renderFinance = function () {
     baseRenderFinance();
     const current = financeValues();
-    const totalInvestidoNasPecasVendidas = db.sales.reduce(
+    const custoDasPecasVendidas = db.sales.reduce(
       (sum, sale) =>
         sum + (Number(sale.unitCost) || 0) * (Number(sale.qty) || 0),
       0,
@@ -341,13 +341,12 @@
       db.products.reduce((sum, product) => sum + (Number(product.stock) || 0), 0) +
       db.sales.reduce((sum, sale) => sum + (Number(sale.qty) || 0), 0);
     const totalVendido = current.revenue;
-    const grossProfit = Math.max(
-      0,
-      totalVendido - totalInvestidoNasPecasVendidas,
-    );
+    const totalInvestidoNosItensRegistrados =
+      current.stockCost + custoDasPecasVendidas;
+    const grossProfit = totalVendido - totalInvestidoNosItensRegistrados;
     const values = {
       units: `${unitsRecorded} un.`,
-      purchases: money(current.stockCost + totalInvestidoNasPecasVendidas),
+      purchases: money(totalInvestidoNosItensRegistrados),
       revenue: money(current.revenue),
       profit: money(grossProfit),
       margin: `${current.revenue > 0 ? ((grossProfit / current.revenue) * 100).toFixed(1).replace(".", ",") : "0,0"}%`,
