@@ -158,10 +158,12 @@
 
   function showPreview(rows, sheetName, fileName) {
     const eligible = rows.filter((row) => !row.duplicate && !row.problem);
-    const sales = eligible.filter((row) => row.isSale).length;
-    const stock = eligible.length - sales;
+    const validRows = rows.filter((row) => !row.problem);
+    const sales = validRows.filter((row) => row.isSale).length;
+    const stock = validRows.length - sales;
     const duplicateCount = rows.filter((row) => row.duplicate).length;
     const problemCount = rows.filter((row) => row.problem).length;
+    const replaceAll = duplicateCount > 0 && eligible.length === 0 && validRows.length > 0;
     const preview = rows.slice(0, 10).map((row) => `
       <tr>
         <td>${row.sourceRow}</td>
@@ -177,21 +179,31 @@
     document.getElementById("modal-body").innerHTML = `
       <p class="sub" style="margin:0 0 12px">Arquivo: <strong>${esc(fileName)}</strong> · Aba encontrada: <strong>${esc(sheetName)}</strong></p>
       <div class="summary-strip">
-        <div class="summary-item"><span>Linhas prontas</span><strong>${eligible.length}</strong></div>
-        <div class="summary-item"><span>Vendas</span><strong>${sales}</strong></div>
-        <div class="summary-item"><span>Itens em estoque</span><strong>${stock}</strong></div>
+        <div class="summary-item"><span>Linhas válidas</span><strong>${validRows.length}</strong></div>
+        <div class="summary-item"><span>Vendas com status Pago</span><strong>${sales}</strong></div>
+        <div class="summary-item"><span>Itens no estoque</span><strong>${stock}</strong></div>
       </div>
       <p class="sub" style="margin:0 0 12px">A coluna “Quantidade em estoque” será usada quando estiver preenchida; sem quantidade, a linha conta como uma unidade. Só linhas com status “Pago” entram como venda; status vazio ou diferente de “Pago” entra no estoque. Preços ausentes ficam sem preço (R$ 0,00). “Despesas” será somado ao custo unitário. Como a planilha não informa entrega nem data, vendas serão importadas como “A entregar” usando a data de hoje.</p>
-      ${duplicateCount ? `<p class="sub" style="color:#997832;margin:0 0 8px">${duplicateCount} linha(s) já importada(s) serão ignoradas.</p>` : ""}
+      ${duplicateCount ? `<p class="sub" style="color:#997832;margin:0 0 8px">${duplicateCount} linha(s) já estão salvas neste navegador. ${replaceAll ? "Use “Substituir dados da planilha” para trocar os produtos e vendas antigos por esta versão corrigida." : "As linhas repetidas serão ignoradas para evitar duplicação."}</p>` : ""}
       ${problemCount ? `<p class="sub" style="color:#b5544e;margin:0 0 8px">${problemCount} linha(s) precisam de revisão e não serão importadas.</p>` : ""}
       <div class="table-scroll" style="max-height:260px;border:1px solid var(--line);border-radius:6px"><table><thead><tr><th>Linha</th><th>Produto</th><th>Categoria</th><th>Tamanho</th><th>Tipo de registro</th><th>Valor</th><th></th></tr></thead><tbody>${preview || '<tr><td colspan="7" class="empty">Todas as linhas já foram importadas.</td></tr>'}</tbody></table></div>
-      <div class="modal-actions"><button type="button" class="btn" onclick="closeModal()">Cancelar</button><button type="button" class="btn dark" id="confirm-excel-import" ${eligible.length ? "" : "disabled"}>Importar ${eligible.length} linha(s)</button></div>`;
+      <div class="modal-actions"><button type="button" class="btn" onclick="closeModal()">Cancelar</button>${replaceAll ? '<button type="button" class="btn danger" id="replace-excel-import">Substituir dados da planilha</button>' : ""}<button type="button" class="btn dark" id="confirm-excel-import" ${eligible.length ? "" : "disabled"}>Importar ${eligible.length} linha(s)</button></div>`;
     document.getElementById("modal-bg").classList.add("show");
     document.getElementById("confirm-excel-import")?.addEventListener("click", () => {
       importRows(eligible);
       closeModal();
       save();
       ping(`${eligible.length} linha(s) importada(s) com sucesso.`);
+    });
+    document.getElementById("replace-excel-import")?.addEventListener("click", (event) => {
+      if (!confirm("Substituir os dados da planilha? Isso apagará todos os produtos e vendas atuais deste navegador, inclusive os cadastrados manualmente, e importará novamente as linhas válidas. Categorias e ajustes financeiros serão mantidos.")) return;
+      db.products = [];
+      db.sales = [];
+      db.importedRows = [];
+      importRows(validRows);
+      closeModal();
+      save();
+      ping(`${validRows.length} linha(s) substituída(s) pela versão atualizada da planilha.`);
     });
   }
 
