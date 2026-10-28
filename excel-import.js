@@ -64,11 +64,12 @@
       customer: ["cliente", "nome do cliente"],
       size: ["tamanho", "tam"],
       model: ["modelo", "categoria", "tipo"],
-      team: ["time", "clube", "produto", "nome"],
+      team: ["time", "clube", "produto", "nome", "nome do produto"],
       buy: ["valor pago", "custo", "valor de compra"],
-      expenses: ["despesas", "frete", "taxa", "custo adicional"],
+      expenses: ["despesas", "dispesas", "frete", "taxa", "custo adicional"],
       sold: ["valor vendido", "preco de venda", "preco vendido"],
       payment: ["status", "pagamento", "status do pagamento"],
+      quantity: ["quantidade em estoque", "quantidade", "qtd", "unidades"],
     };
 
     for (const sheetName of workbook.SheetNames) {
@@ -106,8 +107,9 @@
           expenses: parseAmount(get("expenses")),
           sold: parseAmount(get("sold")),
           payment: String(get("payment")).trim(),
+          quantity: Math.max(1, Math.floor(parseAmount(get("quantity")) || 1)),
         };
-        if (!item.team && !item.model && !item.customer && !item.phone) return [];
+        if (!item.team && !item.model) return [];
         item.isSale = Boolean(item.customer || item.phone || item.payment);
         item.importKey = `excel:${normalize(sheetName)}:${item.sourceRow}`;
         item.category = categoryFor(item.model);
@@ -177,7 +179,7 @@
         <div class="summary-item"><span>Vendas</span><strong>${sales}</strong></div>
         <div class="summary-item"><span>Itens em estoque</span><strong>${stock}</strong></div>
       </div>
-      <p class="sub" style="margin:0 0 12px">Considerei uma unidade por linha. Linhas com cliente, telefone ou status entram como venda; as demais entram no estoque. “Despesas” será somado ao custo unitário. Como a planilha não informa entrega nem data, vendas serão importadas como “A entregar” usando a data de hoje.</p>
+      <p class="sub" style="margin:0 0 12px">A coluna “Quantidade em estoque” será usada quando estiver preenchida; sem quantidade, a linha conta como uma unidade. Linhas com cliente, telefone ou status entram como venda; as demais entram no estoque. “Despesas” será somado ao custo unitário. Como a planilha não informa entrega nem data, vendas serão importadas como “A entregar” usando a data de hoje.</p>
       ${duplicateCount ? `<p class="sub" style="color:#997832;margin:0 0 8px">${duplicateCount} linha(s) já importada(s) serão ignoradas.</p>` : ""}
       ${problemCount ? `<p class="sub" style="color:#b5544e;margin:0 0 8px">${problemCount} linha(s) precisam de revisão e não serão importadas.</p>` : ""}
       <div class="table-scroll" style="max-height:260px;border:1px solid var(--line);border-radius:6px"><table><thead><tr><th>Linha</th><th>Produto</th><th>Categoria</th><th>Tamanho</th><th>Tipo de registro</th><th>Valor</th><th></th></tr></thead><tbody>${preview || '<tr><td colspan="7" class="empty">Todas as linhas já foram importadas.</td></tr>'}</tbody></table></div>
@@ -230,11 +232,11 @@
           productId: product.id,
           productName: product.name,
           unitCost: row.buy + row.expenses,
-          qty: 1,
+          qty: row.quantity,
           unitPrice: row.sold,
           listPrice: row.sold,
           priceMode: "original",
-          total: row.sold,
+          total: row.sold * row.quantity,
           customer: row.customer,
           date: new Date().toISOString().slice(0, 10),
           payment: paid ? "Pago" : "Pendente",
@@ -242,7 +244,7 @@
           notes: row.phone ? `Telefone: ${row.phone}` : "",
         });
       } else {
-        product.stock += 1;
+        product.stock += row.quantity;
       }
       db.importedRows ||= [];
       db.importedRows.push(row.importKey);
