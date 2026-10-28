@@ -907,9 +907,14 @@
                   Cadastre produtos, acompanhe quantidades, custos e promoções.
                 </p>
               </div>
-              <button class="btn dark" onclick="openModal('product')">
-                ＋ &nbsp; Novo produto
-              </button>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+                <button class="btn danger" onclick="deleteAllProducts()">
+                  × &nbsp; Excluir todos os produtos
+                </button>
+                <button class="btn dark" onclick="openModal('product')">
+                  ＋ &nbsp; Novo produto
+                </button>
+              </div>
             </div>
             <div class="cards" id="product-cards"></div>
             <div class="panel table-panel">
@@ -1609,6 +1614,13 @@
         db.products = db.products.filter((x) => x.id !== id);
         save();
         ping("Produto removido.");
+      }
+      function deleteAllProducts() {
+        if (!db.products.length) return ping("Não há produtos cadastrados para excluir.");
+        if (!confirm(`Excluir os ${db.products.length} produtos cadastrados? As vendas registradas serão mantidas. Esta ação não pode ser desfeita.`)) return;
+        db.products = [];
+        save();
+        ping("Todos os produtos foram excluídos. As vendas foram mantidas.");
       }
       function deleteSale(id) {
         if (

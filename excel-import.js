@@ -70,6 +70,7 @@
       sold: ["valor vendido", "preco de venda", "preco vendido"],
       payment: ["status", "pagamento", "status do pagamento"],
       quantity: ["quantidade em estoque", "quantidade", "qtd", "unidades"],
+      arrival: ["chegada", "chegada do produto", "status de chegada", "recebimento"],
     };
 
     for (const sheetName of workbook.SheetNames) {
@@ -108,16 +109,17 @@
           sold: parseAmount(get("sold")),
           payment: String(get("payment")).trim(),
           quantity: Math.max(1, Math.floor(parseAmount(get("quantity")) || 1)),
+          arrival: String(get("arrival")).trim(),
         };
         if (!item.team && !item.model) return [];
-        item.isSale = Boolean(item.customer || item.phone || item.payment);
+        item.isSale = normalize(item.payment) === "pago";
         item.importKey = `excel:${normalize(sheetName)}:${item.sourceRow}`;
         item.category = categoryFor(item.model);
         item.productName = item.team
           ? `Camisa ${item.team}`
           : `Camisa ${item.model || "sem modelo"}`;
         item.duplicate = (db.importedRows || []).includes(item.importKey);
-        item.problem = !item.productName || (!item.isSale && !item.team);
+        item.problem = !item.team || (item.isSale && item.sold <= 0);
         return [item];
       });
       if (!rows.length) throw new Error(`Não encontrei linhas de produtos na aba “${sheetName}”.`);
@@ -179,7 +181,7 @@
         <div class="summary-item"><span>Vendas</span><strong>${sales}</strong></div>
         <div class="summary-item"><span>Itens em estoque</span><strong>${stock}</strong></div>
       </div>
-      <p class="sub" style="margin:0 0 12px">A coluna “Quantidade em estoque” será usada quando estiver preenchida; sem quantidade, a linha conta como uma unidade. Linhas com cliente, telefone ou status entram como venda; as demais entram no estoque. “Despesas” será somado ao custo unitário. Como a planilha não informa entrega nem data, vendas serão importadas como “A entregar” usando a data de hoje.</p>
+      <p class="sub" style="margin:0 0 12px">A coluna “Quantidade em estoque” será usada quando estiver preenchida; sem quantidade, a linha conta como uma unidade. Só linhas com status “Pago” entram como venda; status vazio ou diferente de “Pago” entra no estoque. Preços ausentes ficam sem preço (R$ 0,00). “Despesas” será somado ao custo unitário. Como a planilha não informa entrega nem data, vendas serão importadas como “A entregar” usando a data de hoje.</p>
       ${duplicateCount ? `<p class="sub" style="color:#997832;margin:0 0 8px">${duplicateCount} linha(s) já importada(s) serão ignoradas.</p>` : ""}
       ${problemCount ? `<p class="sub" style="color:#b5544e;margin:0 0 8px">${problemCount} linha(s) precisam de revisão e não serão importadas.</p>` : ""}
       <div class="table-scroll" style="max-height:260px;border:1px solid var(--line);border-radius:6px"><table><thead><tr><th>Linha</th><th>Produto</th><th>Categoria</th><th>Tamanho</th><th>Tipo de registro</th><th>Valor</th><th></th></tr></thead><tbody>${preview || '<tr><td colspan="7" class="empty">Todas as linhas já foram importadas.</td></tr>'}</tbody></table></div>
@@ -203,6 +205,7 @@
         row.buy,
         row.expenses,
         row.sold,
+        row.arrival,
       ]);
       if (!groups.has(identity)) {
         groups.set(identity, {
@@ -215,9 +218,12 @@
           buy: row.buy,
           freight: row.expenses,
           tax: 0,
-          price: row.sold,
+          price: row.sold > 0 ? row.sold : 0,
           promo: 0,
-          arrival: "Chegou",
+          arrival: normalize(row.arrival).includes("aguard") ||
+            normalize(row.arrival).includes("nao chegou")
+            ? "Aguardando chegada"
+            : "Chegou",
           notes: "Importado da planilha; despesas sem separação de frete e importação.",
           image: "",
         });
@@ -226,7 +232,7 @@
       if (!db.categories.includes(product.category)) db.categories.push(product.category);
       if (row.isSale) {
         const status = normalize(row.payment);
-        const paid = status === "pago" || status === "recebido" || status === "quitado";
+        const paid = status === "pago";
         db.sales.push({
           id: crypto.randomUUID(),
           productId: product.id,
