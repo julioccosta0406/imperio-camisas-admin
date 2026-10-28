@@ -337,19 +337,27 @@
         sum + (Number(sale.unitCost) || 0) * (Number(sale.qty) || 0),
       0,
     );
+    const custoDosItensAguardandoChegada = db.products
+      .filter((product) => product.arrival === "Aguardando chegada")
+      .reduce(
+        (sum, product) =>
+          sum + cost(product) * (Number(product.stock) || 0),
+        0,
+      );
     const unitsRecorded =
       db.products.reduce((sum, product) => sum + (Number(product.stock) || 0), 0) +
       db.sales.reduce((sum, sale) => sum + (Number(sale.qty) || 0), 0);
-    const totalVendido = current.revenue;
     const totalInvestidoNosItensRegistrados =
-      current.stockCost + custoDasPecasVendidas;
-    const grossProfit = totalVendido - totalInvestidoNosItensRegistrados;
+      current.stockCost +
+      custoDosItensAguardandoChegada +
+      custoDasPecasVendidas;
+    const grossProfit = current.received - totalInvestidoNosItensRegistrados;
     const values = {
       units: `${unitsRecorded} un.`,
       purchases: money(totalInvestidoNosItensRegistrados),
       revenue: money(current.revenue),
       profit: money(grossProfit),
-      margin: `${current.revenue > 0 ? ((grossProfit / current.revenue) * 100).toFixed(1).replace(".", ",") : "0,0"}%`,
+      margin: `${current.received > 0 ? ((grossProfit / current.received) * 100).toFixed(1).replace(".", ",") : "0,0"}%`,
       received: money(current.received),
       toReceive: money(current.toReceive),
       stockCost: money(current.stockCost),
