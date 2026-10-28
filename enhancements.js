@@ -330,11 +330,31 @@
   window.renderFinance = function () {
     baseRenderFinance();
     const current = financeValues();
-    const values = document.querySelectorAll("#finance-cards .card-value");
-    if (values[0]) values[0].textContent = money(current.revenue);
-    if (values[1]) values[1].textContent = money(current.received);
-    if (values[2]) values[2].textContent = money(current.toReceive);
-    if (values[3]) values[3].textContent = money(current.stockCost);
+    const soldCost = db.sales.reduce(
+      (sum, sale) =>
+        sum + (Number(sale.unitCost) || 0) * (Number(sale.qty) || 0),
+      0,
+    );
+    const unitsRecorded =
+      db.products.reduce((sum, product) => sum + (Number(product.stock) || 0), 0) +
+      db.sales.reduce((sum, sale) => sum + (Number(sale.qty) || 0), 0);
+    const grossProfit = current.revenue - soldCost;
+    const values = {
+      units: `${unitsRecorded} un.`,
+      purchases: money(current.stockCost + soldCost),
+      revenue: money(current.revenue),
+      profit: money(grossProfit),
+      margin: `${current.revenue > 0 ? ((grossProfit / current.revenue) * 100).toFixed(1).replace(".", ",") : "0,0"}%`,
+      received: money(current.received),
+      toReceive: money(current.toReceive),
+      stockCost: money(current.stockCost),
+    };
+    for (const [key, value] of Object.entries(values)) {
+      const cardValue = document.querySelector(
+        `#finance-cards [data-finance="${key}"]`,
+      );
+      if (cardValue) cardValue.textContent = value;
+    }
   };
 
   window.renderSales = function () {

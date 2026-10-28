@@ -1018,8 +1018,7 @@
                 <p class="eyebrow">Entradas, custos e lucro</p>
                 <h1>Financeiro</h1>
                 <p class="sub">
-                  Veja quanto entrou, quanto custaram seus produtos e sua
-                  margem.
+                  Acompanhe compras registradas, gastos, vendas, lucro e valores pendentes.
                 </p>
               </div>
               <div style="display: flex; gap: 8px">
@@ -1059,8 +1058,7 @@
               </div>
             </div>
             <p class="sub" style="margin-top: 12px">
-              Os valores consideram os custos informados no cadastro, as vendas
-              e os valores iniciais que você informar.
+              Unidades e investimento consideram o estoque cadastrado e as vendas registradas. Ajuste os valores iniciais para incluir movimentações anteriores ao painel.
             </p>
           </section>
           <section class="view" id="view-categories">
@@ -1418,21 +1416,20 @@
           pending = revenue - paid,
           spent = db.products.reduce(
             (a, p) => a + cost(p) * (+p.stock || 0),
-            0,
-          ),
-          profit = db.sales.reduce(
-            (a, s) => a + (s.total - cost({ buy: s.unitCost }) * s.qty),
-            0,
           );
         document.getElementById("finance-cards").innerHTML = [
-          ["Receita registrada", money(revenue)],
-          ["Já recebido", money(paid)],
-          ["A receber", money(pending)],
-          ["Custo do estoque atual", money(spent)],
+          ["Unidades registradas (estoque + vendas)", "—", "units"],
+          ["Total investido nos itens registrados", money(spent), "purchases"],
+          ["Total vendido", money(revenue), "revenue"],
+          ["Lucro bruto", "—", "profit"],
+          ["Margem de lucro", "—", "margin"],
+          ["Já recebido", money(paid), "received"],
+          ["A receber", money(pending), "toReceive"],
+          ["Custo do estoque atual", money(spent), "stockCost"],
         ]
           .map(
-            ([a, b]) =>
-              `<div class="card"><div class="card-label">${a}</div><div class="card-value">${b}</div></div>`,
+            ([label, value, key]) =>
+              `<div class="card"><div class="card-label">${label}</div><div class="card-value" data-finance="${key}">${value}</div></div>`,
           )
           .join("");
         document.getElementById("finance-rows").innerHTML = db.products.length
