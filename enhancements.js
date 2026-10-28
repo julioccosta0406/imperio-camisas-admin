@@ -26,10 +26,12 @@
         .reduce((sum, sale) => sum + (+sale.total || 0), 0);
     const stockCost =
       db.openingStockCost +
-      db.products.reduce(
-        (sum, product) => sum + cost(product) * (+product.stock || 0),
-        0,
-      );
+      db.products
+        .filter((product) => (product.arrival || "Chegou") === "Chegou")
+        .reduce(
+          (sum, product) => sum + cost(product) * (+product.stock || 0),
+          0,
+        );
     return { revenue, received, stockCost, toReceive: revenue - received };
   };
   const financeValues = () => {
