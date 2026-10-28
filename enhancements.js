@@ -340,7 +340,7 @@
     const unitsRecorded =
       db.products.reduce((sum, product) => sum + (Number(product.stock) || 0), 0) +
       db.sales.reduce((sum, sale) => sum + (Number(sale.qty) || 0), 0);
-    const grossProfit = current.revenue - soldCost;
+    const grossProfit = Math.max(0, current.revenue - soldCost);
     const values = {
       units: `${unitsRecorded} un.`,
       purchases: money(current.stockCost + soldCost),
