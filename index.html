@@ -1038,6 +1038,15 @@
                     Custos de compra, frete, importação e margem potencial
                   </div>
                 </div>
+                <label class="field" style="margin:0;min-width:190px">
+                  <span class="sr-only">Ordenar produtos</span>
+                  <select id="finance-product-sort" onchange="renderFinance()" aria-label="Ordenar produtos por">
+                    <option value="stock-desc">Maior quantidade em estoque</option>
+                    <option value="stock-asc">Menor quantidade em estoque</option>
+                    <option value="price-desc">Maior preço de venda</option>
+                    <option value="price-asc">Menor preço de venda</option>
+                  </select>
+                </label>
               </div>
               <div class="table-scroll">
                 <table>
@@ -1432,8 +1441,19 @@
               `<div class="card"><div class="card-label">${label}</div><div class="card-value" data-finance="${key}">${value}</div></div>`,
           )
           .join("");
-        document.getElementById("finance-rows").innerHTML = db.products.length
-          ? db.products
+        const sortMode = document.getElementById("finance-product-sort")?.value || "stock-desc";
+        const sortedProducts = [...db.products].sort((a, b) => {
+          const availableA = (a.arrival || "Chegou") === "Chegou" && (+a.stock || 0) > 0;
+          const availableB = (b.arrival || "Chegou") === "Chegou" && (+b.stock || 0) > 0;
+          if (availableA !== availableB) return availableA ? -1 : 1;
+          const [field, direction] = sortMode.split("-");
+          const valueA = field === "price" ? price(a) : (+a.stock || 0);
+          const valueB = field === "price" ? price(b) : (+b.stock || 0);
+          const difference = direction === "asc" ? valueA - valueB : valueB - valueA;
+          return difference || a.name.localeCompare(b.name, "pt-BR");
+        });
+        document.getElementById("finance-rows").innerHTML = sortedProducts.length
+          ? sortedProducts
               .map(
                 (p) =>
                   `<tr><td><strong>${esc(p.name)}</strong></td><td>${money(p.buy)}</td><td>${money(p.freight)}</td><td>${money(p.tax)}</td><td>${money(cost(p))}</td><td>${money(price(p))}</td><td style="color:${margin(p) >= 0 ? "#46805b" : "#b5544e"}">${money(margin(p))}</td><td>${p.stock} un.</td></tr>`,
