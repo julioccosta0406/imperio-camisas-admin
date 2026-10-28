@@ -1170,6 +1170,10 @@
         localStorage.setItem(KEY, JSON.stringify(db));
         renderAll();
       }
+      function newId() {
+        return globalThis.crypto?.randomUUID?.() ||
+          `produto-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
       function ping(s) {
         let n = document.getElementById("notice");
         n.textContent = s;
@@ -1468,25 +1472,47 @@
           body.innerHTML = `<form id="form-product"><div class="form-grid"><div class="field"><label>Nome do produto *</label><input name="name" required value="${esc(p?.name || "")}" placeholder="Ex.: Camisa Brasil 2026"></div><div class="field"><label>Código / SKU</label><input name="sku" value="${esc(p?.sku || "")}" placeholder="Ex.: BRA-26-M"></div><div class="field"><label>Categoria</label><select name="category">${db.categories.map((c) => `<option ${p?.category === c ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div><div class="field"><label>Quantidade em estoque *</label><input name="stock" type="number" min="0" required value="${p?.stock ?? 0}"></div><div class="field"><label>Preço de compra (por unidade)</label><input name="buy" type="number" min="0" step=".01" value="${p?.buy ?? 0}"></div><div class="field"><label>Frete rateado por unidade</label><input name="freight" type="number" min="0" step=".01" value="${p?.freight ?? 0}"></div><div class="field"><label>Taxa de importação por unidade</label><input name="tax" type="number" min="0" step=".01" value="${p?.tax ?? 0}"></div><div class="field"><label>Preço de venda</label><input name="price" type="number" min="0" step=".01" value="${p?.price ?? 0}"></div><div class="field"><label>Preço promocional (opcional)</label><input name="promo" type="number" min="0" step=".01" value="${p?.promo ?? ""}" placeholder="Deixe vazio sem promoção"></div><div class="field"><label>Foto do produto</label><label class="image-upload">＋ Escolher uma foto<input name="image" type="file" accept="image/*" onchange="previewImage(this)"></label></div><div class="field full"><label>Observações</label><textarea name="notes" placeholder="Tamanho, cor, fornecedor ou outras informações">${esc(p?.notes || "")}</textarea></div></div><div class="modal-actions"><button type="button" class="btn" onclick="closeModal()">Cancelar</button><button class="btn dark">${p ? "Salvar alterações" : "Cadastrar produto"}</button></div></form>`;
           document.getElementById("form-product").onsubmit = (e) => {
             e.preventDefault();
-            let f = new FormData(e.target),
-              obj = {
-                name: f.get("name").trim(),
-                sku: f.get("sku").trim(),
-                category: f.get("category") || "Outros",
-                stock: +f.get("stock"),
-                buy: +f.get("buy"),
-                freight: +f.get("freight"),
-                tax: +f.get("tax"),
-                price: +f.get("price"),
-                promo: +f.get("promo") || 0,
-                notes: f.get("notes"),
-                image: e.target.dataset.image || p?.image || "",
-              };
+            const form = e.currentTarget;
+            const f = new FormData(form);
+            const name = String(f.get("name") || "").trim();
+            if (!name) {
+              ping("Informe o nome do produto para continuar.");
+              form.elements.name.focus();
+              return;
+            }
+            const obj = {
+              name,
+              sku: f.get("sku").trim(),
+              category: f.get("category") || "Outros",
+              stock: +f.get("stock"),
+              buy: +f.get("buy"),
+              freight: +f.get("freight"),
+              tax: +f.get("tax"),
+              price: +f.get("price"),
+              promo: +f.get("promo") || 0,
+              notes: f.get("notes"),
+              image: form.dataset.image || p?.image || "",
+              size: f.get("size") || p?.size || "",
+              arrival: f.get("arrival") || p?.arrival || "Chegou",
+            };
+            const previous = p ? { ...p } : null;
+            const created = p ? p : { id: newId(), ...obj };
             if (p) Object.assign(p, obj);
-            else db.products.push({ id: crypto.randomUUID(), ...obj });
+            else db.products.push(created);
+            try {
+              localStorage.setItem(KEY, JSON.stringify(db));
+            } catch (error) {
+              if (p) Object.assign(p, previous);
+              else db.products = db.products.filter((item) => item.id !== created.id);
+              const message = error?.name === "QuotaExceededError"
+                ? "Não foi possível salvar: o armazenamento do navegador está cheio. Tente cadastrar sem foto ou use uma imagem menor."
+                : "Não foi possível salvar o produto. Recarregue o painel e tente novamente.";
+              ping(message);
+              return;
+            }
             closeModal();
-            save();
-            ping(p ? "Produto atualizado." : "Produto cadastrado.");
+            ping(p ? "Produto atualizado com sucesso." : "Produto cadastrado com sucesso.");
+            renderAll();
           };
         } else if (type === "category") {
           title.textContent = "Nova categoria";

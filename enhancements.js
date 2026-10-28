@@ -317,24 +317,6 @@
     sizeField.insertAdjacentElement("afterend", arrivalField);
     const arrivalSelect = arrivalField.querySelector("select");
     arrivalSelect.value = product?.arrival || "Chegou";
-    const submit = form.onsubmit;
-    form.onsubmit = (event) => {
-      const size = sizeSelect.value;
-      const arrival = arrivalSelect.value;
-      submit.call(form, event);
-      if (event.defaultPrevented) {
-        const savedProduct =
-          product ||
-          [...db.products]
-            .reverse()
-            .find((item) => item.name === form.elements.name?.value);
-        if (savedProduct) {
-          savedProduct.size = size;
-          savedProduct.arrival = arrival;
-          save();
-        }
-      }
-    };
   };
 
   window.renderDashboard = function () {
